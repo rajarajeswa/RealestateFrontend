@@ -4,6 +4,10 @@ import { useNavigate } from 'react-router-dom';
 
 const ViewProperty = () => {
   const [property, setProperty] = useState([]);
+  const [filteredProperties, setFilteredProperties] = useState([]);
+  const [sortOption, setSortOption] = useState("");
+  const [filterCity, setFilterCity] = useState("");
+  const [filterType, setFilterType] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -18,6 +22,7 @@ const ViewProperty = () => {
         if (res.status === 200) {
           const data = await res.json();
           setProperty(data);
+          setFilteredProperties(data);
         } else if (res.status === 401 || res.status === 403) {
           alert("🔐 Access Denied. Please log in.");
           localStorage.removeItem("token");
@@ -32,96 +37,106 @@ const ViewProperty = () => {
       });
   }, []);
 
+  useEffect(() => {
+    let filtered = [...property];
+
+    if (filterCity) {
+      filtered = filtered.filter(p => p.propertyCity === filterCity);
+    }
+
+    if (filterType) {
+      filtered = filtered.filter(p => p.propertyType === filterType);
+    }
+
+    if (sortOption === "price-asc") {
+      filtered.sort((a, b) => a.propertyPrice - b.propertyPrice);
+    } else if (sortOption === "price-desc") {
+      filtered.sort((a, b) => b.propertyPrice - a.propertyPrice);
+    } else if (sortOption === "newest") {
+      filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    setFilteredProperties(filtered);
+  }, [sortOption, filterCity, filterType, property]);
+
   const handleBack = () => {
     navigate("/admin-options");
   };
 
+  const uniqueCities = [...new Set(property.map(p => p.propertyCity))];
+  const uniqueTypes = [...new Set(property.map(p => p.propertyType))];
+
   return (
     <div className="container-fluid my-5">
-      
+      <h3 className="text-center mb-4 fw-bold text-info">Property Listings</h3>
 
-      {property.length === 0 ? (
+      <div className="d-flex flex-wrap justify-content-center gap-3 mb-4">
+        <button onClick={handleBack} className="btn btn-outline-primary">
+          ← Return Back
+        </button>
+
+        <select className="form-select w-auto" value={filterCity} onChange={(e) => setFilterCity(e.target.value)}>
+          <option value="">Filter by City</option>
+          {uniqueCities.map((city, idx) => (
+            <option key={idx} value={city}>{city}</option>
+          ))}
+        </select>
+
+        <select className="form-select w-auto" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+          <option value="">Filter by Type</option>
+          {uniqueTypes.map((type, idx) => (
+            <option key={idx} value={type}>{type}</option>
+          ))}
+        </select>
+
+        <select className="form-select w-auto" value={sortOption} onChange={(e) => setSortOption(e.target.value)}>
+          <option value="">Sort By</option>
+          <option value="price-asc">Price (Low to High)</option>
+          <option value="price-desc">Price (High to Low)</option>
+          <option value="newest">Newest First</option>
+        </select>
+      </div>
+
+      {filteredProperties.length === 0 ? (
         <div className="text-center text-muted">No properties available.</div>
       ) : (
         <div className="row g-4">
-          <h3 className="text-center mb-4 fw-bold text-info">
-        Property Listings
-      </h3>
+          {filteredProperties.map((p) => (
+            <div className="col-md-6 col-lg-4" key={p.id}>
+              <div className="card shadow h-100">
+                <img
+                  src={`http://localhost:3001/uploads/${p.propertyImages}`}
+                  alt="Property"
+                  className="card-img-top"
+                  style={{ height: "200px", objectFit: "cover" }}
+                />
 
-      <div className="text-center mb-4">
-        <button onClick={handleBack} className="btn btn-outline-primary" style={{marginRight:"50px"}}>
-          ← Return Back
-        </button>
-      </div>
-          {property.map((p) => (
-  <div className="col-12 mb-4" key={p.id}>
-    <div className="card shadow d-flex flex-column flex-md-row h-100">
-      {/* Image Section */}
-      {p.propertyImages ? (
-        <div className="col-md-4">
-          <img
-src={`/uploads/${p.propertyImages}`}
-            alt="Property"
-            className="img-fluid h-100 w-100 object-fit-cover rounded-start"
-            style={{ maxHeight: "300px", objectFit: "cover" }}
-          />
-        </div>
-      ) : (
-        <div className="col-md-4 d-flex align-items-center justify-content-center bg-light text-muted" style={{ minHeight: "300px" }}>
-          No Image
-        </div>
-      )}
+                <div className="card-body">
+                  <h5 className="card-title text-primary">{p.propertyTitle}</h5>
+                  <h6 className="card-subtitle mb-2 text-muted">
+                    {p.propertyType} - ₹{p.propertyPrice}
+                  </h6>
+                  <p className="mb-2"><strong>Location:</strong> {p.propertyAddress},{p.propertyCity}, {p.propertyState}</p>
+                  <p className="mb-2"><strong>Status:</strong> <span className="badge bg-info text-dark">{p.propertyStatus}</span></p>
+                  <p className="mb-2"><strong>Bedrooms:</strong> {p.bedrooms}</p>
+                  <p className="mb-2"><strong>Area:</strong> {p.area} sqft</p>
+                </div>
 
-      {/* Content Section */}
-      <div className="card-body col-md-8">
-        <h5 className="card-title text-primary">{p.propertyTitle}</h5>
-        <h6 className="card-subtitle mb-2 text-muted">
-          {p.propertyType} - ₹{p.propertyPrice}
-        </h6>
+                <iframe
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(p.propertyAddress)},${encodeURIComponent(p.propertyCity)}&output=embed`}
+                  width="100%"
+                  height="200"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                ></iframe>
 
-        <div className="row">
-          <div className="col-sm-6">
-            <p className="mb-3"><strong>Status:</strong> <span className="badge bg-info text-dark">{p.propertyStatus}</span></p>
-            <p className="mb-3"><strong>Bedrooms:</strong> {p.bedrooms}</p>
-            <p className="mb-3"><strong>Area:</strong> {p.area} sqft ({p.propertyLength}x{p.propertyBreadth})</p>
-            <p className="mb-3"><strong>Facing:</strong> {p.facing}</p>
-            <p className="mb-3"><strong>Furnishing:</strong> {p.furnishing}</p>
-            <p className="mb-3"><strong>Water Supply:</strong> {p.waterSupply}</p>
-            <p className="mb-3"><strong>Property Age:</strong> {p.propertyAge} years</p>
-          </div>
-          <div className="col-sm-6">
-            <p className="mb-3">
-              <strong>Location:</strong> {p.propertyAddress}, {p.landmark}, {p.propertyCity}, {p.propertyState} - {p.pincode}
-            </p>
-            <p className="mb-3"><strong>Road Access:</strong> {p.roadFacility}</p>
-            <p className="mb-3"><strong>Transport:</strong> {p.publicTransport}</p>
-            <p className="mb-3"><strong>Description:</strong> {p.propertyDescription}</p>
-            <p className="mb-3"><strong>Agent:</strong> {p.propertyAgent}</p>
-            <p className="mb-3"><strong>Listed on:</strong> {p.propertyDate}</p>
-          </div>
-        </div>
-
-        {p.propertyImages && (
-          <a
-href={`/uploads/${p.propertyImages}`}
-            download
-            className="btn btn-sm btn-outline-success mt-3"
-            target="_blank"
-            
-          >
-            Download Image
-          </a>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="card-footer text-muted text-end w-100">
-        Created: {new Date(p.createdAt).toLocaleDateString()}
-      </div>
-    </div>
-  </div>
-))}
-
+                <div className="card-footer text-muted text-end">
+                  Created: {new Date(p.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

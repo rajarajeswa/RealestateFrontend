@@ -104,6 +104,7 @@ function AddProject() {
             <input type="text" name="propertyStatus" placeholder="Rent/Buy" className="form-control" onChange={handleChange} required />
           </div>
         </div>
+        
 
         <div className="row">
           <div className="col-sm-4 mb-3">
